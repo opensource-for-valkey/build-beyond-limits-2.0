@@ -37,8 +37,12 @@ if (VALKEY_URL) {
   const makeClient = () => new Redis(VALKEY_URL, {
     tls: VALKEY_URL.startsWith('rediss://') ? {} : undefined,
     lazyConnect: false,
-    maxRetriesPerRequest: 2,
+    maxRetriesPerRequest: 1,
     enableReadyCheck: false,
+    retryStrategy: (times) => {
+      if (times > 3) return null; // stop retrying after 3 attempts
+      return Math.min(times * 500, 2000);
+    },
   });
 
   valkey = makeClient();

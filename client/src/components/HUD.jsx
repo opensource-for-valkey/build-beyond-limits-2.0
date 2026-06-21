@@ -129,7 +129,7 @@ function Controls() {
       position: 'absolute', bottom: 16, right: 16,
       color: '#444', fontSize: 11, textAlign: 'right', lineHeight: 1.8,
     }}>
-      Move: mouse &nbsp;|&nbsp; Boost: hold click / space
+      Steer: mouse or WASD / arrow keys &nbsp;|&nbsp; Boost: hold click / space
     </div>
   );
 }

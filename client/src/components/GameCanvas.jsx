@@ -149,39 +149,86 @@ export default function GameCanvas({ snapshot, playerId, onInput, active }) {
 
   // ─── Mouse / keyboard input ──────────────────────────────────────────────
 
+  const keysRef = useRef(new Set());   // currently held direction keys
+  const mouseDirRef = useRef(0);        // last direction from mouse
+
   useEffect(() => {
     if (!active) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Compute direction from currently held WASD / arrow keys.
+    // Returns null if no direction key is held.
+    const keyDir = () => {
+      const k = keysRef.current;
+      let dx = 0, dy = 0;
+      if (k.has('ArrowUp')    || k.has('KeyW')) dy -= 1;
+      if (k.has('ArrowDown')  || k.has('KeyS')) dy += 1;
+      if (k.has('ArrowLeft')  || k.has('KeyA')) dx -= 1;
+      if (k.has('ArrowRight') || k.has('KeyD')) dx += 1;
+      if (dx === 0 && dy === 0) return null;
+      return Math.atan2(dy, dx);
+    };
+
+    // Mouse move → update mouse direction reference
     const onMouseMove = (e) => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left - canvas.width / 2;
       const my = e.clientY - rect.top - canvas.height / 2;
-      onInput(Math.atan2(my, mx), boostRef.current);
+      mouseDirRef.current = Math.atan2(my, mx);
+      // Mouse wins over keyboard while moving
+      onInput(mouseDirRef.current, boostRef.current);
     };
 
     const onMouseDown = (e) => {
-      if (e.button === 0) { boostRef.current = true; onInput(null, true); }
+      if (e.button === 0) { boostRef.current = true; onInput(mouseDirRef.current, true); }
     };
     const onMouseUp = (e) => {
-      if (e.button === 0) { boostRef.current = false; onInput(null, false); }
+      if (e.button === 0) { boostRef.current = false; onInput(mouseDirRef.current, false); }
     };
 
     const onKeyDown = (e) => {
-      if (e.code === 'Space') { e.preventDefault(); boostRef.current = true; onInput(null, true); }
-    };
-    const onKeyUp = (e) => {
-      if (e.code === 'Space') { boostRef.current = false; onInput(null, false); }
+      const DIRECTION_KEYS = new Set([
+        'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+        'KeyW','KeyA','KeyS','KeyD',
+      ]);
+      if (DIRECTION_KEYS.has(e.code)) {
+        e.preventDefault();
+        keysRef.current.add(e.code);
+        const d = keyDir();
+        if (d !== null) onInput(d, boostRef.current);
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        boostRef.current = true;
+        onInput(keyDir() ?? mouseDirRef.current, true);
+      }
     };
 
-    // Throttle mousemove to avoid flooding the server
-    let lastSend = 0;
+    const onKeyUp = (e) => {
+      keysRef.current.delete(e.code);
+      if (e.code === 'Space') {
+        boostRef.current = false;
+        onInput(keyDir() ?? mouseDirRef.current, false);
+      }
+      // Keep sending new direction if other keys still held
+      const d = keyDir();
+      if (d !== null) onInput(d, boostRef.current);
+    };
+
+    // Interval: continuously stream keyboard direction while keys held (30 Hz)
+    const keyInterval = setInterval(() => {
+      const d = keyDir();
+      if (d !== null) onInput(d, boostRef.current);
+    }, 33);
+
+    // Throttle mousemove
+    let lastMouseSend = 0;
     const throttledMouseMove = (e) => {
       const now = Date.now();
-      if (now - lastSend < 30) return; // ~33/s max
-      lastSend = now;
+      if (now - lastMouseSend < 30) return;
+      lastMouseSend = now;
       onMouseMove(e);
     };
 
@@ -192,6 +239,7 @@ export default function GameCanvas({ snapshot, playerId, onInput, active }) {
     window.addEventListener('keyup', onKeyUp);
 
     return () => {
+      clearInterval(keyInterval);
       canvas.removeEventListener('mousemove', throttledMouseMove);
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mouseup', onMouseUp);

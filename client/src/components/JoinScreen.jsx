@@ -89,7 +89,7 @@ export default function JoinScreen({ onJoin }) {
 
         {/* Tips */}
         <div style={{ color: '#445', fontSize: 12, textAlign: 'center', lineHeight: 2 }}>
-          Move mouse to steer &nbsp;&bull;&nbsp; Hold click or space to boost<br />
+          Steer: mouse or WASD / arrow keys &nbsp;&bull;&nbsp; Boost: hold click or space<br />
           Boost burns length but drops pellets &nbsp;&bull;&nbsp; Hit another snake to die
         </div>
       </div>
