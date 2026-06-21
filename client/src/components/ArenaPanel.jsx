@@ -12,15 +12,24 @@ const COLORS = [
   { id: 'venom',   label: 'Venom',   head: '#84cc16', body: '#65a30d' },
 ];
 
-const EMOJIS = ['\uD83D\uDC0D', '\uD83D\uDC7E', '\uD83E\uDD16', '\uD83E\uDDA6', '\uD83D\uDC32', '\uD83E\uDD85', '\uD83D\uDC3A', '\uD83D\uDC80'];
+const EMOJIS = ['🐍', '👾', '🤖', '🦦', '🐲', '🦅', '🐺', '💀'];
 
 const loadAvatar = () => {
-  try { return JSON.parse(localStorage.getItem('sq_avatar') || '{"colorId":"emerald","emoji":"\uD83D\uDC0D"}'); }
-  catch { return { colorId: 'emerald', emoji: '\uD83D\uDC0D' }; }
+  try { return JSON.parse(localStorage.getItem('sq_avatar') || '{"colorId":"emerald","emoji":"🐍"}'); }
+  catch { return { colorId: 'emerald', emoji: '🐍' }; }
 };
 
+const loadCredentials = () => ({
+  name: (() => { try { return localStorage.getItem('sq_last_name') || ''; } catch { return ''; } })(),
+  pin:  (() => { try { return localStorage.getItem('sq_last_pin')  || ''; } catch { return ''; } })(),
+});
+
 function Label({ children }) {
-  return <div style={{ fontSize: 9, letterSpacing: 3, fontWeight: 800, color: '#475569' }}>{children}</div>;
+  return (
+    <div style={{ fontSize: 9, letterSpacing: 3, fontWeight: 800, color: '#475569', marginBottom: 8 }}>
+      {children}
+    </div>
+  );
 }
 
 function SnakePreview({ color, emoji }) {
@@ -47,33 +56,46 @@ function SnakePreview({ color, emoji }) {
   );
 }
 
-function CredRow({ label, value, ok }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8,
-    }}>
-      <span style={{ fontSize: 10, letterSpacing: 1.5, color: '#475569', fontWeight: 700 }}>{label}</span>
-      <span style={{ fontSize: 13, color: ok ? '#e2e8f0' : '#334155', fontFamily: 'monospace' }}>{value}</span>
-    </div>
-  );
-}
+export default function ArenaPanel() {
+  const [avatar, setAvatar]   = useState(loadAvatar);
+  const creds                  = loadCredentials();
+  const [credName, setCredName] = useState(creds.name);
+  const [credPin,  setCredPin]  = useState(creds.pin);
+  const [saved, setSaved]       = useState(false);
 
-export default function ArenaPanel({ playerName, pin }) {
-  const [avatar, setAvatar] = useState(loadAvatar);
+  const color = COLORS.find(c => c.id === avatar.colorId) || COLORS[0];
 
-  const save = (next) => {
+  const saveAvatar = (next) => {
     setAvatar(next);
     audio.click();
     try { localStorage.setItem('sq_avatar', JSON.stringify(next)); } catch {}
   };
 
-  const color = COLORS.find(c => c.id === avatar.colorId) || COLORS[0];
+  const saveCredentials = () => {
+    try {
+      if (credName.trim()) localStorage.setItem('sq_last_name', credName.trim());
+      if (credPin.length === 4) localStorage.setItem('sq_last_pin', credPin);
+    } catch {}
+    audio.click();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2200);
+  };
+
+  const credReady = credName.trim().length >= 2 && credPin.length === 4;
+
+  const inputStyle = {
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 10, padding: '11px 14px',
+    color: '#f1f5f9', fontSize: 14,
+    outline: 'none', width: '100%',
+    fontFamily: 'inherit', boxSizing: 'border-box',
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-      {/* Snake preview */}
+      {/* ── Snake preview ── */}
       <div style={{
         background: 'rgba(6,12,26,0.7)', border: '1px solid rgba(0,200,255,0.1)',
         borderRadius: 16, padding: '22px 24px',
@@ -82,28 +104,100 @@ export default function ArenaPanel({ playerName, pin }) {
         <SnakePreview color={color} emoji={avatar.emoji} />
         <div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>
-            {avatar.emoji} {playerName || 'Your Snake'}
+            {avatar.emoji} {credName || 'Your Snake'}
           </div>
           <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{color.label} skin</div>
-          {playerName && (
+          {credName && credPin.length === 4 && (
             <div style={{
               marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5,
               background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
               borderRadius: 8, padding: '3px 10px',
               fontSize: 10, fontWeight: 700, color: '#4ade80', letterSpacing: 1,
-            }}>
-              {'\u2713'} Credentials active
-            </div>
+            }}>✓ Credentials set</div>
           )}
         </div>
       </div>
 
-      {/* Color picker */}
+      {/* ── Player Credentials (editable) ── */}
+      <div style={{
+        background: 'rgba(6,12,26,0.7)',
+        border: '1px solid rgba(0,245,255,0.12)',
+        borderTop: '2px solid rgba(0,245,255,0.4)',
+        borderRadius: 14, padding: '20px 22px',
+        display: 'flex', flexDirection: 'column', gap: 14,
+      }}>
+        <div style={{ fontSize: 10, letterSpacing: 3, fontWeight: 800, color: '#00f5ff' }}>
+          PLAYER CREDENTIALS
+        </div>
+        <div style={{ fontSize: 10, color: '#334155', lineHeight: 1.7 }}>
+          Set your name and PIN here — they'll auto-fill when you create or join a room.
+        </div>
+
+        {/* Name */}
+        <div>
+          <Label>YOUR NAME</Label>
+          <input
+            style={inputStyle}
+            placeholder="e.g. VenomKing"
+            maxLength={20}
+            value={credName}
+            onChange={e => setCredName(e.target.value)}
+            onFocus={e => { e.target.style.borderColor = 'rgba(0,245,255,0.35)'; }}
+            onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+          />
+        </div>
+
+        {/* PIN */}
+        <div>
+          <Label>4-DIGIT PIN</Label>
+          <input
+            style={{ ...inputStyle, letterSpacing: 8, textAlign: 'center', fontSize: 22 }}
+            type="password"
+            inputMode="numeric"
+            placeholder="••••"
+            maxLength={4}
+            value={credPin}
+            onChange={e => setCredPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            onFocus={e => { e.target.style.borderColor = 'rgba(0,245,255,0.35)'; }}
+            onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+          />
+          <div style={{ fontSize: 9, color: '#334155', marginTop: 5 }}>
+            PIN locks your identity across sessions. First use registers, return use verifies.
+          </div>
+        </div>
+
+        {/* Save button */}
+        <button
+          onClick={saveCredentials}
+          disabled={!credReady}
+          style={{
+            width: '100%', padding: '12px',
+            borderRadius: 10, border: 'none',
+            fontWeight: 800, fontSize: 12, letterSpacing: 1.5,
+            cursor: credReady ? 'pointer' : 'not-allowed',
+            fontFamily: 'inherit',
+            background: saved
+              ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+              : credReady
+                ? 'linear-gradient(135deg, #00f5ff, #0ea5e9)'
+                : 'rgba(255,255,255,0.05)',
+            color: saved ? '#fff' : credReady ? '#030912' : '#334155',
+            boxShadow: saved
+              ? '0 0 22px rgba(34,197,94,0.4)'
+              : credReady ? '0 0 22px rgba(0,245,255,0.35)' : 'none',
+            transition: 'all 0.3s',
+          }}
+        >
+          {saved ? '✓ CREDENTIALS SAVED' : 'SAVE CREDENTIALS'}
+        </button>
+      </div>
+
+      {/* ── Color picker ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Label>SNAKE SKIN</Label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {COLORS.map(c => (
-            <button key={c.id} title={c.label} onClick={() => save({ ...avatar, colorId: c.id })}
+            <button key={c.id} title={c.label} onClick={() => saveAvatar({ ...avatar, colorId: c.id })}
               style={{
                 width: 44, height: 44, borderRadius: 12, cursor: 'pointer',
                 background: `linear-gradient(135deg, ${c.head}, ${c.body})`,
@@ -115,12 +209,12 @@ export default function ArenaPanel({ playerName, pin }) {
         </div>
       </div>
 
-      {/* Emoji picker */}
+      {/* ── Emoji picker ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Label>AVATAR ICON</Label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {EMOJIS.map(e => (
-            <button key={e} onClick={() => save({ ...avatar, emoji: e })}
+            <button key={e} onClick={() => saveAvatar({ ...avatar, emoji: e })}
               style={{
                 fontSize: 22, padding: '8px 10px',
                 background: avatar.emoji === e ? 'rgba(0,200,255,0.12)' : 'rgba(255,255,255,0.04)',
@@ -133,28 +227,15 @@ export default function ArenaPanel({ playerName, pin }) {
         </div>
       </div>
 
-      {/* Credentials */}
-      <div style={{
-        background: 'rgba(6,12,26,0.6)', border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 12, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10,
-      }}>
-        <Label>PLAYER CREDENTIALS</Label>
-        <CredRow label="Name" value={playerName || '-- enter in PLAY tab'} ok={!!playerName} />
-        <CredRow label="PIN"  value={pin ? '\u2022\u2022\u2022\u2022' : '-- enter in PLAY tab'} ok={!!pin} />
-        <div style={{ fontSize: 10, color: '#1e293b', lineHeight: 1.7, marginTop: 4 }}>
-          PIN protects your identity across sessions. First use registers, return use verifies.
-        </div>
-      </div>
-
-      {/* Active rooms notice */}
+      {/* ── Room browser notice ── */}
       <div style={{
         background: 'rgba(168,85,247,0.04)', border: '1px dashed rgba(168,85,247,0.15)',
-        borderRadius: 12, padding: '20px', textAlign: 'center',
+        borderRadius: 12, padding: '18px', textAlign: 'center',
       }}>
-        <div style={{ fontSize: 26, marginBottom: 8 }}>🔭</div>
+        <div style={{ fontSize: 24, marginBottom: 6 }}>🔭</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>Open Room Browser</div>
-        <div style={{ fontSize: 11, color: '#475569', marginTop: 6 }}>
-          Browse and join open rooms directly from the{' '}
+        <div style={{ fontSize: 11, color: '#475569', marginTop: 5 }}>
+          Browse and join open rooms from the{' '}
           <span style={{ color: '#00f5ff', fontWeight: 700 }}>JOIN ROOM</span> tab
         </div>
       </div>
