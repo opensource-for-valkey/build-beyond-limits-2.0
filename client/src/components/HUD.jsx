@@ -136,9 +136,32 @@ function Controls() {
 
 // ─── HUD root ─────────────────────────────────────────────────────────────────
 
-export default function HUD({ leaderboard, killfeed, snapshot, playerId, greeting, onGreetingDismiss }) {
+function RoomBadge({ roomCode }) {
+  if (!roomCode) return null;
+  const copy = () => navigator.clipboard.writeText(roomCode).catch(() => {});
+  return (
+    <div
+      onClick={copy}
+      title="Click to copy room code"
+      style={{
+        position: 'absolute', top: 16, left: 16,
+        background: 'rgba(0,0,0,0.6)',
+        border: '1px solid rgba(100,200,255,0.2)',
+        borderRadius: 10, padding: '6px 14px',
+        cursor: 'pointer',
+        backdropFilter: 'blur(6px)',
+      }}
+    >
+      <span style={{ fontSize: 10, color: '#667', letterSpacing: 1 }}>ROOM </span>
+      <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: 4, color: '#88ddff' }}>{roomCode}</span>
+    </div>
+  );
+}
+
+export default function HUD({ leaderboard, killfeed, snapshot, playerId, roomCode, greeting, onGreetingDismiss }) {
   return (
     <div style={hudStyle}>
+      <RoomBadge roomCode={roomCode} />
       <Leaderboard leaderboard={leaderboard} playerId={playerId} />
       <Killfeed entries={killfeed} />
       <ScoreBar snapshot={snapshot} playerId={playerId} />
