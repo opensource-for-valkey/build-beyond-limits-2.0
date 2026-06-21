@@ -150,15 +150,14 @@ function Divider({ label }) {
 function CreateTab({ onCreate, error, loading, createdCode, onCopyCode }) {
   const savedName = () => { try { return localStorage.getItem('sq_last_name') || ''; } catch { return ''; } };
   const savedPin  = () => { try { return localStorage.getItem('sq_last_pin')  || ''; } catch { return ''; } };
-  const [name,   setName]   = useState(savedName);
-  const [pin,    setPin]    = useState(savedPin);
+  const name = savedName();
+  const pin  = savedPin();
   const [roomPw, setRoomPw] = useState('');
   const ready = name.trim().length >= 2 && pin.length === 4;
 
   const submit = (e) => {
     e.preventDefault();
     if (!ready || loading) return;
-    try { localStorage.setItem('sq_last_name', name.trim()); } catch {}
     onCreate(name.trim(), pin, roomPw.trim() || null);
   };
 
@@ -188,15 +187,22 @@ function CreateTab({ onCreate, error, loading, createdCode, onCopyCode }) {
   return (
     <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <ErrBox msg={error} />
-      <FInput label="YOUR NAME" placeholder="e.g. VenomKing" maxLength={20}
-        value={name} onChange={e => setName(e.target.value)} autoFocus />
-      <FInput label="4-DIGIT PIN" type="password" placeholder="••••" maxLength={4}
-        hint="PIN locks your identity across sessions"
-        style={{ letterSpacing: 8, textAlign: 'center', fontSize: 22 }}
-        value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+      {/* Name/PIN shown as read-only since auth already captured them */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.18)',
+        borderRadius: 10, padding: '11px 14px',
+      }}>
+        <span style={{ fontSize: 16 }}>👤</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{name || 'Unknown'}</div>
+          <div style={{ fontSize: 9, color: T.muted, letterSpacing: 1 }}>AUTHENTICATED · PIN VERIFIED</div>
+        </div>
+        <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
+      </div>
       <FInput label="ROOM PASSWORD (OPTIONAL)" type="password"
         placeholder="Leave blank for public room" maxLength={30}
-        value={roomPw} onChange={e => setRoomPw(e.target.value)} />
+        value={roomPw} onChange={e => setRoomPw(e.target.value)} autoFocus />
       <Btn disabled={!ready || loading}>
         {loading ? 'Creating…' : 'CREATE ROOM →'}
       </Btn>
@@ -289,10 +295,10 @@ function OpenRoomsBrowser({ onSelectRoom }) {
 function JoinTab({ onJoin, onCheckRoom, error, loading }) {
   const savedName = () => { try { return localStorage.getItem('sq_last_name') || ''; } catch { return ''; } };
   const savedPin  = () => { try { return localStorage.getItem('sq_last_pin')  || ''; } catch { return ''; } };
+  const name = savedName();
+  const pin  = savedPin();
   const [mode,     setMode]     = useState('code');
   const [code,     setCode]     = useState('');
-  const [name,     setName]     = useState(savedName);
-  const [pin,      setPin]      = useState(savedPin);
   const [roomPw,   setRoomPw]   = useState('');
   const [info,     setInfo]     = useState(null);
   const [checking, setChecking] = useState(false);
@@ -358,11 +364,18 @@ function JoinTab({ onJoin, onCheckRoom, error, loading }) {
 
       {mode === 'code' && (
         <>
-          <FInput label="YOUR NAME" placeholder="e.g. VenomKing" maxLength={20}
-            value={name} onChange={e => setName(e.target.value)} />
-          <FInput label="YOUR PIN" type="password" placeholder="••••" maxLength={4}
-            style={{ letterSpacing: 8, textAlign: 'center', fontSize: 22 }}
-            value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.18)',
+            borderRadius: 10, padding: '11px 14px',
+          }}>
+            <span style={{ fontSize: 16 }}>👤</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{name || 'Unknown'}</div>
+              <div style={{ fontSize: 9, color: T.muted, letterSpacing: 1 }}>AUTHENTICATED · PIN VERIFIED</div>
+            </div>
+            <div style={{ marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
+          </div>
           {info?.passwordRequired && (
             <FInput label="ROOM PASSWORD" type="password"
               placeholder="Enter room password" maxLength={30}
@@ -484,6 +497,7 @@ export default function LobbyScreen({
   onCreate, onJoin, onCheckRoom,
   error, loading, createdCode,
   stats, unlocked,
+  playerName, onSwitchAuth,
 }) {
   const [section, setSection] = useState('play');
   const [muted,   setMuted]   = useState(false);
@@ -567,17 +581,40 @@ export default function LobbyScreen({
             })}
           </div>
 
-          {/* Mute */}
-          <button onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: muted ? 'rgba(239,68,68,0.1)' : T.tealDim,
-              border: `1px solid ${muted ? 'rgba(239,68,68,0.3)' : T.tealBorder}`,
-              cursor: 'pointer', fontSize: 16, transition: 'all 0.2s',
-              flexShrink: 0,
-            }}
-          >{muted ? '🔇' : '🔊'}</button>
+          {/* Right side: user badge + mute */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {playerName && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  background: T.tealDim, border: `1px solid ${T.tealBorder}`,
+                  borderRadius: 8, padding: '5px 10px',
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.teal, boxShadow: `0 0 6px ${T.teal}` }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: T.teal }}>{playerName}</span>
+                </div>
+                <button onClick={onSwitchAuth} title="Switch user"
+                  style={{
+                    background: 'transparent', border: `1px solid ${T.border}`,
+                    borderRadius: 8, padding: '5px 9px',
+                    color: T.muted, fontSize: 10, cursor: 'pointer',
+                    fontFamily: FONT, fontWeight: 700, letterSpacing: 0.5,
+                    transition: 'all 0.2s',
+                  }}
+                >↩ Switch</button>
+              </div>
+            )}
+
+            <button onClick={toggleMute} title={muted ? 'Unmute' : 'Mute'}
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: muted ? 'rgba(239,68,68,0.1)' : T.tealDim,
+                border: `1px solid ${muted ? 'rgba(239,68,68,0.3)' : T.tealBorder}`,
+                cursor: 'pointer', fontSize: 16, transition: 'all 0.2s',
+              }}
+            >{muted ? '🔇' : '🔊'}</button>
+          </div>
         </nav>
 
         {/* ════ Content ════ */}

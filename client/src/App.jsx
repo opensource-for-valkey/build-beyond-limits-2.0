@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import GameCanvas from './components/GameCanvas.jsx';
 import HUD from './components/HUD.jsx';
 import LobbyScreen from './components/LobbyScreen.jsx';
+import AuthScreen from './components/AuthScreen.jsx';
 import DeathScreen from './components/DeathScreen.jsx';
 import GameOverScreen from './components/GameOverScreen.jsx';
 import AchievementToast from './components/AchievementToast.jsx';
@@ -20,7 +21,7 @@ export default function App() {
   const { unlocked, toasts, tryUnlock, dismissToast } = useAchievements();
 
   // ── Phase + core state ────────────────────────────────────────────────────
-  const [phase, setPhase]               = useState('lobby'); // lobby|playing|dead|gameover
+  const [phase, setPhase]               = useState('auth'); // auth|lobby|playing|dead|gameover
   const [playerId, setPlayerId]         = useState(null);
   const [playerName, setPlayerName]     = useState('');
   const [playerPin, setPlayerPin]       = useState('');
@@ -259,14 +260,25 @@ export default function App() {
 
   const inGame = phase === 'playing' || phase === 'dead' || phase === 'gameover';
 
+  const handleAuth = useCallback((name, pin) => {
+    setPlayerName(name); playerNameRef.current = name;
+    setPlayerPin(pin);
+    setPhase('lobby'); phaseRef.current = 'lobby';
+  }, []);
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {phase === 'auth' && (
+        <AuthScreen wsSend={wsSend} pendingRef={pendingRef} onAuth={handleAuth} />
+      )}
+
       {phase === 'lobby' && (
         <LobbyScreen
           onCreate={handleCreate} onJoin={handleJoin} onCheckRoom={handleCheckRoom}
           error={lobbyError} loading={lobbyLoading} createdCode={createdCode}
           stats={stats} unlocked={unlocked}
           playerName={playerName} pin={playerPin}
+          onSwitchAuth={() => { setPhase('auth'); phaseRef.current = 'auth'; }}
         />
       )}
 
