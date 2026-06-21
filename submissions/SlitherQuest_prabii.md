@@ -4,7 +4,7 @@
 
 ## Attendee/Team Details
 
-**Name:** Prabhas
+**Name:** Prabhas Satti
 **GitHub Username:** prabii
 **LinkedIn Profile:** https://www.linkedin.com/in/prabii
 **GitHub Project Repository:** https://github.com/prabii/Slither2.0_valkey_hack/tree/slither-quest
