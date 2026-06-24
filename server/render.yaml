@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: slither-quest-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: VALKEY_URL
+        sync: false
+      - key: BREETH_API_KEY
+        sync: false
+      - key: ROOM_PASSWORD
+        sync: false
