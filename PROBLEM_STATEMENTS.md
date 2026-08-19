@@ -20,4 +20,4 @@ We will be sharing the credits link of Breeth AI when we go live!
 Please join the discord channel for getting the credits - [https://discord.gg/mPC3AeUC](https://discord.gg/mPC3AeUC)
 
 
-
+Form link for project details submission - https://forms.gle/w1JLDdD785uQSCoM7
